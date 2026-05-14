@@ -27,5 +27,9 @@
   ],
   "wechat_sources": [
     {"name": "weixin", "url": "https://wx.sogou.com/weixin?type=2&query={keyword}", "region": "cn", "type": "url"}
+  ],
+  "social_sources": [
+    {"name": "Twitter", "url": "https://twitter.com/search?q={keyword}&src=typed_query", "region": "global", "type": "social"},
+    {"name": "Twitter Latest", "url": "https://twitter.com/search?q={keyword}&f=live&src=typed_query", "region": "global", "type": "social"}
   ]
 }
