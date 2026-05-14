@@ -1,0 +1,35 @@
+{
+  "search_engines": [
+    {"name": "Baidu", "url": "https://www.baidu.com/s?wd={keyword}", "region": "cn", "type": "url"},
+    {"name": "Bing CN", "url": "https://cn.bing.com/search?q={keyword}&ensearch=0", "region": "cn", "type": "url"},
+    {"name": "Bing INT", "url": "https://cn.bing.com/search?q={keyword}&ensearch=1", "region": "cn", "type": "url"},
+    {"name": "360", "url": "https://www.so.com/s?q={keyword}", "region": "cn", "type": "url"},
+    {"name": "Sogou", "url": "https://sogou.com/web?query={keyword}", "region": "cn", "type": "url"},
+    {"name": "Shenma", "url": "https://m.sm.cn/s?q={keyword}", "region": "cn", "type": "url"},
+    {"name": "Google", "url": "https://www.google.com/search?q={keyword}", "region": "global", "type": "url"},
+    {"name": "Google HK", "url": "https://www.google.com.hk/search?q={keyword}", "region": "global", "type": "url"},
+    {"name": "DuckDuckGo", "url": "https://duckduckgo.com/html/?q={keyword}", "region": "global", "type": "parser"},
+    {"name": "Yahoo", "url": "https://search.yahoo.com/search?p={keyword}", "region": "global", "type": "url"},
+    {"name": "Startpage", "url": "https://www.startpage.com/sp/search?query={keyword}", "region": "global", "type": "url"},
+    {"name": "Brave", "url": "https://search.brave.com/search?q={keyword}", "region": "global", "type": "url"},
+    {"name": "Ecosia", "url": "https://www.ecosia.org/search?q={keyword}", "region": "global", "type": "url"},
+    {"name": "Qwant", "url": "https://www.qwant.com/?q={keyword}", "region": "global", "type": "url"}
+  ],
+  "special_engines": [
+    {"name": "WolframAlpha", "url": "https://www.wolframalpha.com/input?i={keyword}", "region": "global", "type": "url"}
+  ],
+  "news_sources": [
+    {"name": "cls", "url": "https://www.cls.cn/searchPage?keyword={keyword}&type=all", "region": "cn", "type": "news"},
+    {"name": "wallstreetcn", "url": "https://wallstreetcn.com/search?q={keyword}", "region": "cn", "type": "news"}
+  ],
+  "academic_sources": [
+    {"name": "arxiv", "url": "https://export.arxiv.org/api/query?search_query=all:{keyword}&max_results=10", "region": "global", "type": "api"}
+  ],
+  "wechat_sources": [
+    {"name": "weixin", "url": "https://wx.sogou.com/weixin?type=2&query={keyword}", "region": "cn", "type": "url"}
+  ],
+  "social_sources": [
+    {"name": "Twitter", "url": "https://twitter.com/search?q={keyword}&src=typed_query", "region": "global", "type": "social"},
+    {"name": "Twitter Latest", "url": "https://twitter.com/search?q={keyword}&f=live&src=typed_query", "region": "global", "type": "social"}
+  ]
+}
