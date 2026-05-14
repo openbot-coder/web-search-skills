@@ -28,6 +28,68 @@ cd web-search-skills
 pip install -r requirements.txt
 ```
 
+### Quick Start
+
+```python
+import asyncio
+from src.web_search import search_web
+
+results = asyncio.run(search_web("latest AI developments"))
+for result in results:
+    print(f"- {result.title}: {result.url}")
+```
+
+## Project Structure
+
+```
+web-search-skills/
+├── README.md              # Project documentation
+├── LICENSE                # MIT License
+├── skill.md               # CodeBuddy Agent Skill definition
+├── requirements.txt       # Python dependencies
+├── src/                   # Source code
+│   └── web_search.py      # Core search implementation
+└── examples/              # Usage examples
+    └── basic_search.py
+```
+
+## Usage
+
+### As a CodeBuddy Agent Skill
+
+This project is designed as a CodeBuddy Agent Skill. To install:
+
+1. Copy `skill.md` to your CodeBuddy skills directory
+2. Configure your search engine API keys
+3. The skill is now available to your AI agent
+
+### API Reference
+
+```python
+# Core class
+searcher = WebSearch(config=None)
+results = await searcher.search(query, engine="duckduckgo", max_results=10)
+content = await searcher.extract_content(url)
+
+# Convenience function
+results = await search_web(query, engine="duckduckgo", max_results=10)
+```
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
 ## License
 
-MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built for the CodeBuddy ecosystem
+- Inspired by the need for better web search capabilities in AI agents
