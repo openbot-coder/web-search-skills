@@ -1,1 +1,1 @@
-"""News source implementations."""
+"""News search engines."""

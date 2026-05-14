@@ -1,1 +1,1 @@
-"""Academic paper search implementations."""
+"""Academic search engines."""

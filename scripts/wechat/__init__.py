@@ -1,1 +1,1 @@
-"""WeChat public account search implementations."""
+"""WeChat search engines."""
