@@ -1,76 +1,47 @@
 ---
 name: web-search-skills
-description: "Multi-source web search skill for AI agents. Supports 16+ search engines (Google, DuckDuckGo, Baidu, Bing, etc.), Chinese financial news (财联社, 华尔街见闻), international RSS news (BBC, Reuters, NPR, Al Jazeera), ArXiv academic papers, WeChat public accounts, and Twitter/X search. Use when the agent needs real-time web data, news, research papers, WeChat articles, or social media content."
+description: "多源搜索 CLI 工具，支持 20+ 搜索引擎。搜索微信公众号文章、新闻资讯、学术论文、社交媒体的综合搜索技能。当用户需要搜索网络信息、查找微信公众号文章、搜索财经新闻、查询学术论文时使用。"
 version: 2.1.0
 license: MIT
+compatibility: Requires Python 3.8+, httpx, beautifulsoup4, lxml
 metadata:
   author: openbot-coder
-  category: search
-  tags: [web-search, news, academic, wechat, social, twitter, rss, multi-engine]
-  engines: 26
+  category: development
+  tags: [search, web, wechat, news, academic, cli]
 ---
 
 # Web Search Skills
 
-Multi-source web search toolkit. Provides a unified interface to search across search engines, news sources, academic databases, social media, and WeChat public accounts.
-
 ## Overview
 
-| Category | Sources | Count |
-|----------|---------|:-----:|
-| Web Search | Baidu, Google, DuckDuckGo, Bing CN/INT, 360, Sogou, Shenma, Yahoo, Startpage, Brave, Ecosia, Qwant | 14 |
-| CN News | 财联社, 华尔街见闻 | 2 |
-| RSS News | BBC (World/Business/Tech), Reuters, NPR, Al Jazeera | 6 |
-| Academic | ArXiv | 1 |
-| WeChat | 搜狗微信 | 1 |
-| Social | Twitter/X (top/latest/people/photos) | 1 |
-| Special | WolframAlpha | 1 |
-| **Total** | | **26** |
+Multi-source web search CLI and library supporting 20+ search engines.
 
-## Quick Start
+## Triggers
 
-### Python API
-```python
-from scripts.unified_search import UnifiedSearch
+Chinese: "搜索微信公众号...", "搜一下微信公众号...", "查一下新闻...", "搜索新闻关于...", "搜论文...", "查学术资料...", "搜索一下..."
+English: "search the web for...", "find information about...", "look up...", "search WeChat for...", "search news about..."
 
-async with UnifiedSearch() as searcher:
-    tweets = await searcher.search_social("Python")
-    tweet_url = await searcher.get_twitter_search_url("Python", search_type="latest")
-    headlines = await searcher.search_rss(max_results=20)
-    tech_news = await searcher.search_rss("AI", feeds=["BBC Technology"])
+## Installation
+
+```bash
+cd web-search-skills
+uv tool install -e .
 ```
 
-### URL Generation
-```javascript
-web_fetch({"url": "https://twitter.com/search?q=AI&f=live&src=typed_query"})
-web_fetch({"url": "https://feeds.bbci.co.uk/news/technology/rss.xml"})
-web_fetch({"url": "https://www.aljazeera.com/xml/rss/all.xml"})
-```
+## Commands
 
-## Available Sources
+| Command | Description |
+|---------|-------------|
+| `web-search search <query>` | Search all sources |
+| `web-search web <query>` | Web search engines |
+| `web-search news <query>` | News (CLS, WallStreetCN) |
+| `web-search wechat <query>` | WeChat articles |
+| `web-search academic <query>` | Academic papers (ArXiv) |
+| `web-search social <query>` | Social media (Twitter/X) |
+| `web-search rss <query>` | RSS feeds |
+| `web-search sources` | List all sources |
+| `web-search urls <query>` | Get search URLs only |
 
-### Twitter/X Search
-| Type | URL |
-|------|-----|
-| Top | `https://twitter.com/search?q={keyword}&src=typed_query` |
-| Latest | `...&f=live&src=typed_query` |
-| People | `...&f=user&src=typed_query` |
-| Photos | `...&f=image&src=typed_query` |
+## Configuration
 
-**Advanced operators**: `from:user`, `to:user`, `#hashtag`, `filter:links`, `min_retweets:N`, `min_faves:N`
-
-### RSS News Feeds
-| Source | Category |
-|--------|----------|
-| BBC World | News |
-| BBC Top Stories | News |
-| BBC Business | Business |
-| BBC Technology | Technology |
-| Reuters | News |
-| NPR | News |
-| Al Jazeera | News |
-
-## References
-- `references/search-operators.md`
-- `config/engines.json`
-- `scripts/unified_search.py`
+Engines defined in `config/engines.json`. Supports 6 categories with 21 sources.
