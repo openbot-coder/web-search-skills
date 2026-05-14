@@ -15,6 +15,9 @@
     {"name": "Ecosia", "url": "https://www.ecosia.org/search?q={keyword}", "region": "global", "type": "url"},
     {"name": "Qwant", "url": "https://www.qwant.com/?q={keyword}", "region": "global", "type": "url"}
   ],
+  "api_engines": [
+    {"name": "Baidu Qianfan", "type": "baidu_qianfan", "region": "cn"}
+  ],
   "special_engines": [
     {"name": "WolframAlpha", "url": "https://www.wolframalpha.com/input?i={keyword}", "region": "global", "type": "url"}
   ],

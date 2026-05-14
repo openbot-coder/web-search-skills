@@ -8,11 +8,13 @@ Usage:
 Commands:
     search       Search all sources (default)
     web          Search web search engines (Google, Baidu, DuckDuckGo, etc.)
+    baidu        Search via Baidu Qianfan AI Search API (需配置 BAIDU_API_KEY)
     news         Search news (财联社, 华尔街见闻, RSS)
-    wechat       Search WeChat public account articles
+    wechat       Search WeChat public account articles (via Sougou)
     academic     Search academic papers (ArXiv)
     social       Search social media (Twitter/X)
     rss          Search RSS news feeds
+    health       Test engine connectivity
     sources      List all available sources
     urls         Get search URLs without executing
 
@@ -20,16 +22,21 @@ Options:
     -n, --max-results N    Max results per source (default: 10)
     -j, --json             Output as JSON
     -o, --output FILE      Save results to file
-    -s, --source NAME      Specific source name
+    -s, --source NAME      Specific source name(s)
     -r, --region REGION    Region filter (cn/global)
+    --site SITE            Restrict to specific site (baidu command only, e.g. mp.weixin.qq.com)
+    --recency RECENCY      Time filter: day, week, month, semiyear, year (baidu command only)
     -v, --verbose          Show debug logs
     -h, --help             Show this help
 
 Examples:
     web-search wechat 蒙面财经
+    web-search baidu 今日新闻 --recency week
+    web-search baidu "央视新闻 中美元首会晤" --site mp.weixin.qq.com --recency week
     web-search news "人工智能" -n 5
     web-search web "Python async" -r global -j
     web-search search "量子计算" -o results.json
+    web-search health
     web-search sources
     web-search urls "机器学习"
 """
@@ -226,6 +233,15 @@ async def _search_social(query: str, max_results: int, **kwargs) -> list[Any]:
         await us.close()
 
 
+async def _search_baidu(query: str, max_results: int, **kwargs) -> list[Any]:
+    from scripts.engines.baidu_qianfan import BaiduQianFanEngine
+    engine = BaiduQianFanEngine({"api_key": os.getenv("BAIDU_API_KEY", "")})
+    try:
+        return await engine.search(query, max_results=max_results, **kwargs)
+    finally:
+        await engine.close()
+
+
 async def _search_rss(query: str, max_results: int, **kwargs) -> list[Any]:
     us = _get_unified()()
     try:
@@ -258,6 +274,7 @@ def cmd_sources(args):
         ("academic_sources", "学术源"),
         ("wechat_sources", "微信源"),
         ("social_sources", "社交源"),
+        ("api_engines", "API 引擎"),
         ("special_engines", "特殊源"),
     ]:
         count = categories.get(cat_key, 0)
@@ -280,6 +297,26 @@ def cmd_urls(args):
         print()
 
 
+async def cmd_health(args):
+    """Test all engine connectivity."""
+    us = _get_unified()()
+    try:
+        print("正在检测各引擎连通性...\n")
+        statuses = await us.search_health()
+        ok_count = sum(1 for s in statuses if s["status"] == "ok")
+        for s in statuses:
+            if s["status"] == "ok":
+                print(f"  ✅  {s['name']}")
+            elif s["status"] == "timeout":
+                print(f"  ⏱️  {s['name']}  超时")
+            else:
+                detail = s.get("detail", "")
+                print(f"  ❌  {s['name']}  {detail}")
+        print(f"\n总计: {len(statuses)} 个引擎, {ok_count} 个可用")
+    finally:
+        await us.close()
+
+
 async def _run_search(args):
     """Route search to the right engine(s)."""
     if args.verbose:
@@ -288,6 +325,7 @@ async def _run_search(args):
     method_map = {
         "search": _search_all,
         "web": _search_web,
+        "baidu": _search_baidu,
         "news": _search_news,
         "wechat": _search_wechat,
         "academic": _search_academic,
@@ -300,6 +338,11 @@ async def _run_search(args):
     kwargs = {}
     if args.command == "web" and args.region:
         kwargs["region"] = args.region
+    if args.command == "baidu":
+        if args.site:
+            kwargs["site"] = args.site
+        if args.recency:
+            kwargs["recency"] = args.recency
 
     try:
         results = await search_fn(
@@ -318,6 +361,7 @@ async def _run_search(args):
     cmd_names = {
         "search": "全源搜索",
         "web": "网页搜索",
+        "baidu": "百度千帆 AI 搜索",
         "news": "新闻搜索",
         "wechat": "微信公众号搜索",
         "academic": "学术搜索",
@@ -376,8 +420,8 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default="search",
-        choices=["search", "web", "news", "wechat", "academic", "social",
-                 "rss", "sources", "urls"],
+        choices=["search", "web", "baidu", "news", "wechat", "academic",
+                 "social", "rss", "health", "sources", "urls"],
         help="Search type (default: search)",
     )
     parser.add_argument(
@@ -415,6 +459,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Region filter (web search only)",
     )
     parser.add_argument(
+        "--site",
+        type=str,
+        help="Restrict to specific site (baidu command only, e.g. mp.weixin.qq.com)",
+    )
+    parser.add_argument(
+        "--recency",
+        type=str,
+        choices=["day", "week", "month", "semiyear", "year"],
+        default=None,
+        help="Time filter (baidu command only, default: year)",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Show debug logs",
@@ -434,9 +490,13 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # sources and urls commands don't need a query
+    # sources, urls, health don't need a query
     if args.command == "sources":
         cmd_sources(args)
+        return
+
+    if args.command == "health":
+        asyncio.run(cmd_health(args))
         return
 
     if args.command == "urls":

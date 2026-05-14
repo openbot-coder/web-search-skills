@@ -13,8 +13,8 @@ from typing import Any, Optional
 from scripts.core.base import SearchResult
 from scripts.core.config_loader import (
     get_search_engines, get_news_sources, get_academic_sources,
-    get_wechat_sources, get_special_engines, get_social_sources,
-    get_all_sources, get_engine,
+    get_wechat_sources, get_api_engines, get_special_engines,
+    get_social_sources, get_all_sources, get_engine,
 )
 from scripts.engines.url_engine import UrlSearchEngine
 from scripts.engines.parser_engines import DuckDuckGoEngine
@@ -24,8 +24,14 @@ from scripts.news.rss import RSSNewsEngine
 from scripts.academic.arxiv import ArXivEngine
 from scripts.wechat.sogou_weixin import SogouWeChatEngine
 from scripts.social.twitter import TwitterSearchEngine
+from scripts.engines.baidu_qianfan import BaiduQianFanEngine
 
 logger = logging.getLogger(__name__)
+
+# Default timeout per engine (seconds)
+_DEFAULT_ENGINE_TIMEOUT = 15
+# Max concurrent engine calls
+_DEFAULT_MAX_CONCURRENT = 5
 
 SOURCE_CATEGORIES = {
     "web": get_search_engines,
@@ -33,6 +39,7 @@ SOURCE_CATEGORIES = {
     "academic": get_academic_sources,
     "wechat": get_wechat_sources,
     "social": get_social_sources,
+    "api": get_api_engines,
     "special": get_special_engines,
 }
 
@@ -44,6 +51,10 @@ class UnifiedSearch:
         self.config = config or {}
         self._cache: dict[str, list[SearchResult]] = {}
         self._engines: dict[str, Any] = {}
+        self._timeout = self.config.get("engine_timeout", _DEFAULT_ENGINE_TIMEOUT)
+        self._semaphore = asyncio.Semaphore(
+            self.config.get("max_concurrent", _DEFAULT_MAX_CONCURRENT)
+        )
 
     async def __aenter__(self):
         return self
@@ -80,6 +91,7 @@ class UnifiedSearch:
         if not tasks:
             return []
 
+        # Run all engines with semaphore-based concurrency control
         results_lists = await asyncio.gather(*tasks, return_exceptions=True)
         all_results: list[SearchResult] = []
         for results in results_lists:
@@ -88,8 +100,63 @@ class UnifiedSearch:
                 continue
             all_results.extend(results)
 
+        # Dedup by URL, keep first occurrence
+        all_results = self._dedup_results(all_results)
+
         self._cache[cache_key] = all_results
         return all_results
+
+    def _dedup_results(self, results: list[SearchResult]) -> list[SearchResult]:
+        """Remove duplicates by URL, keeping first occurrence."""
+        seen: set[str] = set()
+        deduped = []
+        for r in results:
+            key = r.url.strip().rstrip("/")
+            if key and key not in seen:
+                seen.add(key)
+                deduped.append(r)
+        return deduped
+
+    async def _safe_search(self, engine, query, max_results, **kwargs):
+        async with self._semaphore:
+            try:
+                return await asyncio.wait_for(
+                    engine.search(query, max_results=max_results, **kwargs),
+                    timeout=self._timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"Engine {engine.name} timed out after {self._timeout}s")
+                return []
+            except Exception as e:
+                logger.error(f"Engine {engine.name} failed: {e}")
+                return []
+
+    async def search_health(self) -> list[dict[str, Any]]:
+        """Check health of all configured engines."""
+        statuses = []
+        seen_names = set()
+        for cat_key, cat_fn in SOURCE_CATEGORIES.items():
+            for engine_def in cat_fn():
+                name = engine_def.get("name", "?")
+                if name in seen_names:
+                    continue
+                seen_names.add(name)
+                engine = self._get_engine(engine_def)
+                if engine is None:
+                    statuses.append({"name": name, "status": "error", "detail": "engine_init_failed"})
+                    continue
+                try:
+                    async with self._semaphore:
+                        await asyncio.wait_for(
+                            engine.search("health check", max_results=1),
+                            timeout=8,
+                        )
+                    statuses.append({"name": name, "status": "ok"})
+                except asyncio.TimeoutError:
+                    statuses.append({"name": name, "status": "timeout"})
+                except Exception as e:
+                    statuses.append({"name": name, "status": "error", "detail": str(e)[:80]})
+        return statuses
 
     def _get_engine(self, engine_def: dict[str, Any]):
         """Get or create an engine instance by definition."""
@@ -101,6 +168,8 @@ class UnifiedSearch:
 
         if name == "DuckDuckGo":
             engine = DuckDuckGoEngine(self.config)
+        elif engine_type == "baidu_qianfan" or "baidu qianfan" in name.lower():
+            engine = BaiduQianFanEngine(self.config)
         elif "cls" in name.lower():
             engine = CLSNewsEngine(self.config)
         elif "wallstreet" in name.lower() or "华尔街" in name:
@@ -120,13 +189,6 @@ class UnifiedSearch:
 
         self._engines[name] = engine
         return engine
-
-    async def _safe_search(self, engine, query, max_results, **kwargs):
-        try:
-            return await engine.search(query, max_results=max_results, **kwargs)
-        except Exception as e:
-            logger.error(f"Engine {engine.name} failed: {e}")
-            return []
 
     async def search_engines(self, query, region=None, max_results=10):
         """Quick search across web search engines."""
