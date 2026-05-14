@@ -23,7 +23,13 @@
   ],
   "news_sources": [
     {"name": "cls", "url": "https://www.cls.cn/searchPage?keyword={keyword}&type=all", "region": "cn", "type": "news"},
-    {"name": "wallstreetcn", "url": "https://wallstreetcn.com/search?q={keyword}", "region": "cn", "type": "news"}
+    {"name": "wallstreetcn", "url": "https://wallstreetcn.com/search?q={keyword}", "region": "cn", "type": "news"},
+    {"name": "Hacker News", "type": "news", "region": "global"},
+    {"name": "GitHub Trending", "type": "news", "region": "global"},
+    {"name": "36氪", "type": "news", "region": "cn"},
+    {"name": "微博热搜", "type": "news", "region": "cn"},
+    {"name": "V2EX", "type": "news", "region": "cn"},
+    {"name": "腾讯新闻", "type": "news", "region": "cn"}
   ],
   "academic_sources": [
     {"name": "arxiv", "url": "https://export.arxiv.org/api/query?search_query=all:{keyword}&max_results=10", "region": "global", "type": "api"}

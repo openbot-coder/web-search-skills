@@ -21,6 +21,10 @@ from scripts.engines.parser_engines import DuckDuckGoEngine
 from scripts.news.cls import CLSNewsEngine
 from scripts.news.wallstreetcn import WallStreetCNEngine
 from scripts.news.rss import RSSNewsEngine
+from scripts.news.tech_news import (
+    HackerNewsEngine, GitHubTrendingEngine, Kr36Engine,
+    WeiboEngine, V2EXEngine, TencentNewsEngine,
+)
 from scripts.academic.arxiv import ArXivEngine
 from scripts.wechat.sogou_weixin import SogouWeChatEngine
 from scripts.social.twitter import TwitterSearchEngine
@@ -132,31 +136,44 @@ class UnifiedSearch:
                 return []
 
     async def search_health(self) -> list[dict[str, Any]]:
-        """Check health of all configured engines."""
-        statuses = []
-        seen_names = set()
-        for cat_key, cat_fn in SOURCE_CATEGORIES.items():
+        """Check health of all configured engines (concurrent)."""
+        seen_names: set[str] = set()
+        tasks: list[asyncio.Task] = []
+        for cat_fn in SOURCE_CATEGORIES.values():
             for engine_def in cat_fn():
                 name = engine_def.get("name", "?")
                 if name in seen_names:
                     continue
                 seen_names.add(name)
-                engine = self._get_engine(engine_def)
-                if engine is None:
-                    statuses.append({"name": name, "status": "error", "detail": "engine_init_failed"})
-                    continue
-                try:
-                    async with self._semaphore:
-                        await asyncio.wait_for(
-                            engine.search("health check", max_results=1),
-                            timeout=8,
-                        )
-                    statuses.append({"name": name, "status": "ok"})
-                except asyncio.TimeoutError:
-                    statuses.append({"name": name, "status": "timeout"})
-                except Exception as e:
-                    statuses.append({"name": name, "status": "error", "detail": str(e)[:80]})
+                tasks.append(asyncio.create_task(self._check_one_engine(engine_def, name)))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        statuses: list[dict[str, Any]] = []
+        for r in results:
+            if isinstance(r, Exception):
+                statuses.append({"name": "?", "status": "error", "detail": str(r)[:80]})
+            else:
+                statuses.append(r)
         return statuses
+
+    async def _check_one_engine(
+        self, engine_def: dict[str, Any], name: str,
+    ) -> dict[str, Any]:
+        """Check health of a single engine."""
+        engine = self._get_engine(engine_def)
+        if engine is None:
+            return {"name": name, "status": "error", "detail": "engine_init_failed"}
+        try:
+            async with self._semaphore:
+                await asyncio.wait_for(
+                    engine.search("health check", max_results=1),
+                    timeout=8,
+                )
+            return {"name": name, "status": "ok"}
+        except asyncio.TimeoutError:
+            return {"name": name, "status": "timeout"}
+        except Exception as e:
+            return {"name": name, "status": "error", "detail": str(e)[:80]}
 
     def _get_engine(self, engine_def: dict[str, Any]):
         """Get or create an engine instance by definition."""
@@ -180,7 +197,19 @@ class UnifiedSearch:
             engine = SogouWeChatEngine(self.config)
         elif "twitter" in name.lower():
             engine = TwitterSearchEngine(self.config)
-        elif engine_type == "news" and name not in ("cls", "wallstreetcn"):
+        elif name == "Hacker News":
+            engine = HackerNewsEngine(self.config)
+        elif name == "GitHub Trending":
+            engine = GitHubTrendingEngine(self.config)
+        elif name == "36氪":
+            engine = Kr36Engine(self.config)
+        elif name == "微博热搜":
+            engine = WeiboEngine(self.config)
+        elif name == "V2EX":
+            engine = V2EXEngine(self.config)
+        elif name == "腾讯新闻":
+            engine = TencentNewsEngine(self.config)
+        elif engine_type == "news" and name not in ("cls", "wallstreetcn", "Hacker News", "GitHub Trending", "36氪", "微博热搜", "V2EX", "腾讯新闻"):
             engine = RSSNewsEngine(self.config)
         elif engine_type == "social":
             engine = TwitterSearchEngine(self.config) if "twitter" in name.lower() else UrlSearchEngine(name, engine_def)

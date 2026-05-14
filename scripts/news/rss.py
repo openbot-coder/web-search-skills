@@ -27,7 +27,8 @@ from scripts.core.base import SearchEngine, SearchResult
 
 logger = logging.getLogger(__name__)
 
-# RSS feed definitions (from news-summary skill + additional sources)
+# RSS feed definitions
+# Core sources (general news) + AI newsletters + essays + podcasts
 RSS_FEEDS = {
     "BBC World": {
         "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
@@ -63,6 +64,84 @@ RSS_FEEDS = {
         "url": "https://www.aljazeera.com/xml/rss/all.xml",
         "category": "news",
         "lang": "en",
+    },
+
+    # -----------------------------------------------------------------------
+    # AI Newsletters (inspired by news-aggregator-skill)
+    # -----------------------------------------------------------------------
+    "Latent Space": {
+        "url": "https://feeds.transistor.fm/latent-space-podcast",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "ai_newsletter",
+    },
+    "ChinAI": {
+        "url": "https://chinai.substack.com/feed",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "ai_newsletter",
+    },
+    "Memia": {
+        "url": "https://memia.substack.com/feed",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "ai_newsletter",
+    },
+    "Interconnects": {
+        "url": "https://interconnects.substack.com/feed",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "ai_newsletter",
+    },
+    "KDnuggets": {
+        "url": "https://www.kdnuggets.com/feed",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "ai_newsletter",
+    },
+
+    # -----------------------------------------------------------------------
+    # Deep Essays & Thinkers (inspired by news-aggregator-skill)
+    # -----------------------------------------------------------------------
+    "Paul Graham": {
+        "url": "https://paulgraham.com/rss.xml",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "essay",
+    },
+    "James Clear": {
+        "url": "https://jamesclear.com/feed",
+        "category": "news",
+        "lang": "en",
+        "subcategory": "essay",
+    },
+    "Wait But Why": {
+        "url": "https://waitbutwhy.com/feed",
+        "category": "news",
+        "lang": "en",
+        "subcategory": "essay",
+    },
+    "Farnam Street": {
+        "url": "https://fs.blog/feed/",
+        "category": "news",
+        "lang": "en",
+        "subcategory": "essay",
+    },
+
+    # -----------------------------------------------------------------------
+    # Podcasts (inspired by news-aggregator-skill)
+    # -----------------------------------------------------------------------
+    "Lex Fridman Podcast": {
+        "url": "https://lexfridman.com/feed/podcast/",
+        "category": "technology",
+        "lang": "en",
+        "subcategory": "podcast",
+    },
+    "80,000 Hours": {
+        "url": "https://80000hours.org/feed/podcast/",
+        "category": "news",
+        "lang": "en",
+        "subcategory": "podcast",
     },
 }
 

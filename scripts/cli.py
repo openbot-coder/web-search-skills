@@ -1,41 +1,45 @@
 #!/usr/bin/env python3
 """
-Web Search Skills CLI — search across 20+ sources from the command line.
+Web Search Skills CLI — search across 28 sources from the command line.
 
 Usage:
     web-search <command> <query> [options]
 
 Commands:
-    search       Search all sources (default)
-    web          Search web search engines (Google, Baidu, DuckDuckGo, etc.)
-    baidu        Search via Baidu Qianfan AI Search API (需配置 BAIDU_API_KEY)
-    news         Search news (财联社, 华尔街见闻, RSS)
-    wechat       Search WeChat public account articles (via Sougou)
-    academic     Search academic papers (ArXiv)
-    social       Search social media (Twitter/X)
-    rss          Search RSS news feeds
-    health       Test engine connectivity
+    search       Search all 28 sources in parallel (default)
+    web          Web search engines (Google, Baidu, DuckDuckGo, etc.)
+    baidu        Baidu Qianfan AI Search API (需配置 BAIDU_API_KEY)
+    news         News (Hacker News, GitHub Trending, 36氪, RSS, etc.)
+    wechat       WeChat public account articles (via Sogou)
+    academic     Academic papers (ArXiv)
+    social       Social media (Twitter/X)
+    rss          RSS feeds (AI newsletters, essays, podcasts)
+    health       Test connectivity of all 28 engines (concurrent)
     sources      List all available sources
-    urls         Get search URLs without executing
+    urls         Generate search URLs without executing
 
 Options:
     -n, --max-results N    Max results per source (default: 10)
     -j, --json             Output as JSON
     -o, --output FILE      Save results to file
-    -s, --source NAME      Specific source name(s)
-    -r, --region REGION    Region filter (cn/global)
-    --site SITE            Restrict to specific site (baidu command only, e.g. mp.weixin.qq.com)
-    --recency RECENCY      Time filter: day, week, month, semiyear, year (baidu command only)
+    -s, --source NAME      Specific source name(s), support multiple
+    -r, --region REGION    Region filter: cn / global (web only)
+    --site SITE            Restrict to site (baidu only, e.g. mp.weixin.qq.com)
+    --recency RECENCY      Time filter: day/week/month/semiyear/year (baidu only)
     -v, --verbose          Show debug logs
     -h, --help             Show this help
 
 Examples:
-    web-search wechat 蒙面财经
-    web-search baidu 今日新闻 --recency week
-    web-search baidu "央视新闻 中美元首会晤" --site mp.weixin.qq.com --recency week
-    web-search news "人工智能" -n 5
-    web-search web "Python async" -r global -j
     web-search search "量子计算" -o results.json
+    web-search search "AI" -s web news -n 5
+    web-search search "technology" -s "Hacker News" "V2EX" -n 3
+    web-search web "Python async" -r global -j
+    web-search baidu "今日新闻" --recency week
+    web-search baidu "中美元首会晤" --site mp.weixin.qq.com
+    web-search news "人工智能" -n 5
+    web-search wechat 蒙面财经
+    web-search academic "quantum computing"
+    web-search social "Iran nuclear" -n 5
     web-search health
     web-search sources
     web-search urls "机器学习"
@@ -377,6 +381,9 @@ async def _run_search(args):
             kwargs["site"] = args.site
         if args.recency:
             kwargs["recency"] = args.recency
+    # --source / -s: pass specific source names/categories to search
+    if args.source:
+        kwargs["sources"] = args.source
 
     try:
         results = await search_fn(

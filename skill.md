@@ -1,144 +1,186 @@
 ---
 name: web-search-skills
-description: "多源搜索 CLI 工具，支持 20+ 搜索引擎。搜索微信公众号文章、新闻资讯、学术论文、社交媒体的综合搜索技能。当用户需要搜索网络信息、查找微信公众号文章、搜索财经新闻、查询学术论文时使用。"
-version: 2.1.0
+description: "Multi-source web search CLI & library, covering web, news, WeChat, academic, social, and RSS feeds across 28 engines. Use when the user asks to search the web, find WeChat articles, look up news, search academic papers, or check social media."
+version: 2.2.0
 license: MIT
 compatibility: Requires Python 3.8+, httpx, beautifulsoup4, lxml
 metadata:
   author: openbot-coder
   category: development
-  tags: [search, web, wechat, news, academic, cli]
+  tags: [search, web, wechat, news, academic, social, rss, cli, concurrent]
 ---
 
 # Web Search Skills
 
-## 概述
+## Overview
 
-Multi-source web search CLI and library supporting 20+ search engines, including web search, news (财联社, 华尔街见闻), WeChat articles, academic papers (ArXiv), social media (Twitter/X), and RSS feeds.
+A CLI (`web-search`) and Python library that queries **28 search engines** concurrently via `asyncio.gather`. Supports web search, news (Hacker News, GitHub Trending, 36氪, 微博热搜, V2EX, RSS feeds), WeChat articles, ArXiv papers, Twitter/X, and Baidu Qianfan AI search.
 
-## 触发词 Triggers
+All engines run in parallel with `Semaphore(5)` concurrency control and 15s per-engine timeout.
 
-中文触发词：
-- "搜索微信公众号..."
-- "搜一下微信公众号..."
-- "查一下新闻..."
-- "搜索新闻关于..."
-- "搜论文..."
-- "查学术资料..."
-- "搜索一下..."
+## Triggers
 
-English Triggers:
-- "search the web for..."
-- "find information about..."
-- "look up..."
-- "search WeChat for..."
-- "search news about..."
-- Any query requiring real-time web data
+When the user says any of these, use this skill:
 
-## 安装 Installation
+| Intent | Example user phrases |
+|--------|---------------------|
+| Web search | "搜索一下 xxx", "search the web for xxx" |
+| WeChat articles | "搜微信公众号 xxx", "search WeChat for xxx" |
+| News | "查一下新闻", "搜索最新的科技新闻", "search news about xxx" |
+| Academic | "搜论文 xxx", "search papers about xxx", "查学术资料" |
+| Social media | "看看 Twitter 上关于", "check Twitter for xxx" |
+| Specific source | "看看 Hacker News 上关于", "what's trending on GitHub" |
+| Hot topics | "查一下微博热搜", "check Weibo trending" |
+
+## Agent Decision Tree
+
+Use this flow to pick the right command:
+
+```
+用户说了什么？
+│
+├─ "微信公众号" / "WeChat" / 公众号名称
+│   → web-search wechat <query>
+│
+├─ "学术" / "论文" / "paper" / "ArXiv"
+│   → web-search academic <query>
+│
+├─ "Twitter" / "X" / "社交" / "social"
+│   → web-search social <query> [-n 5]
+│
+├─ "新闻" / "news" / 明确指定 RSS/博文/播客
+│   → web-search news <query> [-n 5]
+│
+├─ 明确指定了特定源名称
+│   → web-search search <query> -s "源名1" "源名2" [-n 5]
+│
+├─ 需要多类源对比（如"新闻+社交上关于伊朗的看法"）
+│   → web-search search <query> -s news social [-n 10]
+│
+├─ 需要百度搜索 + 站点/时间过滤
+│   → web-search baidu <query> [--site xxx] [--recency week]
+│
+├─ "健康检查" / "health" / "测试引擎"
+│   → web-search health
+│
+├─ "列出源" / "sources" / "有哪些搜索引擎"
+│   → web-search sources
+│
+├─ 其余通用查询
+│   → web-search search <query> [-s 源1 源2...] [-n 10]
+│
+└─ 不确定 / 没特别要求
+    → web-search search <query> -n 10
+```
+
+## Quick Command Reference
+
+| Command | Speed | Best for |
+|---------|-------|----------|
+| `search` | 并发 28 源 | 通用搜索、多源对比 |
+| `web` | 14 网页引擎 | 普通网页搜索 |
+| `baidu` | 单引擎 | 需 site/recency 过滤 |
+| `news` | ~10+ 新闻源 | 科技/财经/博客/播客 |
+| `wechat` | 单引擎 | 微信公众号独家内容 |
+| `academic` | 单引擎 | 学术论文 |
+| `social` | 2 源 (Twitter) | 社交媒体动态 |
+| `rss` | 18 订阅源 | AI 周报/深度文章/播客 |
+| `health` | 28 源并发 (~14s) | 检测连通性 |
+
+**通用选项：** `-n N`（每源结果数）, `-j`（JSON）, `-o FILE`（存文件）, `-s NAME...`（指定源）, `-v`（调试日志）
+
+## Result Field Reference
+
+Each `SearchResult` returned has these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rank` | int | Position in results (1-based) |
+| `title` | str | Article/title text |
+| `url` | str | Direct URL to source |
+| `snippet` | str | Summary text (first ~300 chars) |
+| `source` | str | Engine name (e.g. "Hacker News") |
+| `category` | str | "web", "news", "academic", "social", etc. |
+| `extra` | dict | Engine-specific metadata (see below) |
+
+### `extra` fields by source
+
+| Source | extra fields |
+|--------|-------------|
+| Hacker News | `points`, `author`, `time` (ISO date) |
+| GitHub Trending | `language`, `stars today` (heat) |
+| WeChat | `account` (公众号名), `time` |
+| Twitter | `time`, `account`, `search_type` |
+| RSS feeds | `time`, `feed_url` |
+| Cls / WallStreetCN | `search_url` (JS-rendered fallback) |
+| Baidu Qianfan | `site`, `recency` (if filtered) |
+
+## Error Handling
+
+| Symptom | Likely cause | Action |
+|---------|-------------|--------|
+| Empty results from Hacker News/GitHub | Network issue or no matches | Retry with different query |
+| Baidu Qianfan returns nothing | Missing `BAIDU_API_KEY` env | Check env var is set |
+| DuckDuckGo times out (15s) | Anti-scraping / rate limit | Note to user, skip |
+| WeChat empty results | Sogou anti-scraping | Inform user it may be limited |
+| `web-search health` shows [TIMEOUT] | Engine unreachable from this region | Not critical, skip that engine |
+| GBK encode error on Windows | Non-ASCII char in output | Already auto-fixed by `_sanitize_for_console` |
+
+**General rule:** If a specific source fails, note it but don't fail the whole search — other sources continue concurrently.
+
+## Usage Examples
 
 ```bash
-cd web-search-skills
-uv tool install -e .
+# Full search (all 28 sources, concurrent)
+web-search search "quantum computing" -n 10
+
+# Specific sources only
+web-search search "technology" -s "Hacker News" "V2EX" "GitHub Trending" -n 3
+
+# Multiple categories
+web-search search "Iran nuclear" -s web news social -n 5
+
+# Baidu with site filter
+web-search baidu "中美元首会晤" --site mp.weixin.qq.com --recency week
+
+# All web engines
+web-search web "Python async" -r global -j
+
+# Quick searches
+web-search news "人工智能" -n 5
+web-search wechat 蒙面财经
+web-search academic "machine learning"
+web-search social "AI regulation" -n 5
+
+# Concurrent health check (~14s for 28 engines)
+web-search health
 ```
 
-安装后 `web-search` 命令全局可用。
-
-## 命令 Commands
-
-| 命令 Commands | 说明 Description |
-|---------------|------------------|
-| `web-search search <query>` | 全源搜索 Search all sources |
-| `web-search web <query>` | 网页搜索 Web search engines |
-| `web-search news <query>` | 新闻搜索 News (财联社, 华尔街见闻) |
-| `web-search wechat <query>` | 微信公众号搜索 WeChat articles |
-| `web-search academic <query>` | 学术搜索 Academic papers (ArXiv) |
-| `web-search social <query>` | 社交搜索 Social media (Twitter/X) |
-| `web-search rss <query>` | RSS 源搜索 RSS feeds |
-| `web-search sources` | 列出所有搜索源 List all sources |
-| `web-search urls <query>` | 只生成搜索链接 Search URLs only |
-
-### 通用选项 Options
-
-| 选项 | 说明 |
-|------|------|
-| `-n N` | 每源最大结果数 (默认: 10) |
-| `-j` | JSON 格式输出 |
-| `-o FILE` | 保存结果到 JSON 文件 |
-| `-s NAME` | 指定来源名称 |
-| `-r cn/global` | 区域过滤 (web 搜索) |
-| `-v` | 调试日志 |
-
-## 项目结构 Structure
-
-```
-web-search-skills/
-├── scripts/              # Python 脚本目录
-│   ├── cli.py              # CLI 入口
-│   ├── unified_search.py   # 统一搜索编排器
-│   ├── core/
-│   │   ├── base.py         # SearchResult & SearchEngine 基类
-│   │   └── config_loader.py# 从 JSON 加载搜索引擎配置
-│   ├── engines/
-│   │   ├── url_engine.py   # URL 模板搜索引擎
-│   │   └── parser_engines.py# HTML 解析搜索 (DuckDuckGo)
-│   ├── news/
-│   │   ├── cls.py          # 财联社新闻引擎
-│   │   ├── wallstreetcn.py # 华尔街见闻引擎
-│   │   └── rss.py          # RSS 聚合引擎
-│   ├── academic/
-│   │   └── arxiv.py        # ArXiv 学术论文引擎
-│   ├── wechat/
-│   │   └── sogou_weixin.py # 搜狗微信搜索引擎
-│   └── social/
-│       └── twitter.py      # Twitter/X 搜索引擎
-├── config/
-│   └── engines.json        # 搜索引擎定义配置
-├── ws.py                   # 本地运行入口
-├── pyproject.toml           # 包构建配置
-├── SKILL.md                 # 本技能定义文件
-├── LICENSE                  # MIT 许可证
-└── README.md                # 项目文档
-```
-
-## 配置 Configuration
-
-所有搜索引擎定义在 `config/engines.json` 中，支持 6 类源：
-
-| 类别 | 数量 |
-|------|------|
-| Web 搜索引擎 | 14 个 (Baidu, Google, DuckDuckGo 等) |
-| 新闻源 | 2 个 (财联社, 华尔街见闻) |
-| 学术源 | 1 个 (ArXiv) |
-| 微信源 | 1 个 (搜狗微信) |
-| 社交源 | 2 个 (Twitter, Twitter Latest) |
-| 特殊源 | 1 个 (WolframAlpha) |
-
-每个引擎定义格式：
-```json
-{"name": "Baidu", "url": "https://www.baidu.com/s?wd={keyword}", "region": "cn", "type": "url"}
-```
-
-- `{keyword}` 会被替换为搜索关键词
-- `type: url` 表示只生成 URL，`type: parser` 表示会解析 HTML 提取结果
-
-## Python API
-
-也可在代码中直接调用：
+## Python API (for programmatic use)
 
 ```python
 from scripts.unified_search import UnifiedSearch
 
 async def main():
     us = UnifiedSearch()
-    results = await us.search("量子计算", sources=["web", "news"], max_results=5)
+    results = await us.search(
+        "quantum computing",
+        sources=["Hacker News", "ArXiv"],
+        max_results=5,
+    )
     for r in results:
-        print(f"[{r.rank}] {r.title}: {r.url}")
+        print(f"[{r.rank}] {r.title} ({r.source})")
+        if r.extra:
+            print(f"    extra: {r.extra}")
     await us.close()
 ```
 
-## 注意事项 Notes
+## Important Notes
 
-- 搜狗微信搜索有反爬限制，可能返回空结果
-- 财联社和华尔街见闻需要 JavaScript 渲染，`UnifiedSearch` 返回搜索页面链接
-- RSS 源需要稳定的网络连接
+- **WeChat** via Sogou has anti-scraping limits, may return empty
+- **财联社 / 华尔街见闻** need JS rendering → returns search page URL, not parsed results
+- **Baidu Qianfan** requires `BAIDU_API_KEY` env var
+- **RSS feeds** need stable internet
+- **Windows GBK** terminals: special chars auto-replaced by `_sanitize_for_console()`
+
+> Full user-facing documentation (detailed command reference, project structure, config guide, architecture) is in `README.md`.
