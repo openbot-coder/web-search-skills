@@ -1,1 +1,1 @@
-"""Core infrastructure for the web search skills framework."""
+"""Core data types and base classes."""

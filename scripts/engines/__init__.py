@@ -1,1 +1,1 @@
-"""Search engine implementations - URL-based and parser-based."""
+"""Search engine implementations."""
