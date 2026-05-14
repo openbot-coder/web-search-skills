@@ -306,12 +306,12 @@ async def cmd_health(args):
         ok_count = sum(1 for s in statuses if s["status"] == "ok")
         for s in statuses:
             if s["status"] == "ok":
-                print(f"  ✅  {s['name']}")
+                print(f"  [OK]  {s['name']}")
             elif s["status"] == "timeout":
-                print(f"  ⏱️  {s['name']}  超时")
+                print(f"  [TIMEOUT]  {s['name']}")
             else:
                 detail = s.get("detail", "")
-                print(f"  ❌  {s['name']}  {detail}")
+                print(f"  [FAIL]  {s['name']}  {detail}")
         print(f"\n总计: {len(statuses)} 个引擎, {ok_count} 个可用")
     finally:
         await us.close()
