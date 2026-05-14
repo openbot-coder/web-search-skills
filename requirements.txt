@@ -1,12 +1,11 @@
 # Web Search Skills Dependencies
 
-# Core
+# HTTP client
 httpx>=0.25.0
+
+# HTML parsing
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
-
-# Optional: Google Custom Search
-# google-api-python-client>=2.100.0
 
 # Development
 pytest>=7.0.0

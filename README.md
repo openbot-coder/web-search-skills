@@ -2,25 +2,20 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A collection of web search tools and skills for AI agents, designed to enhance search capabilities with customizable configurations, multiple search engines support, and intelligent result processing.
+Multi-source web search toolkit for AI agents. Integrates **16+ search engines**, **financial news**, **academic papers**, and **WeChat articles** into a unified search interface.
 
 ## Features
 
-- **Multi-Engine Support** — Built-in support for Google, Bing, DuckDuckGo, and custom search backends
-- **Intelligent Result Processing** — Extract, summarize, and rank search results automatically
-- **Configurable Filters** — Filter by date, domain, language, region, and content type
-- **Async & Concurrent** — Non-blocking requests with concurrent search execution
-- **Extensible Architecture** — Plugin-based design for easy integration of new search sources
-- **Agent-Ready** — Designed as a CodeBuddy Agent Skill for seamless AI integration
+- **🔍 16+ Search Engines** — Google, DuckDuckGo, Baidu, Bing, 360, Sogou, Yahoo, Startpage, Brave, Ecosia, Qwant, Shenma + WolframAlpha
+- **📰 Financial News** — 财联社 (cls.cn) & 华尔街见闻 (wallstreetcn.com)
+- **🎓 Academic Papers** — ArXiv (all scientific categories via official API)
+- **💬 WeChat Articles** — 搜狗微信搜索 (wx.sogou.com)
+- **🌐 Async & Concurrent** — Non-blocking requests with httpx
+- **🔧 Config-Driven** — Add/modify engines via `config/engines.json`
+- **🔗 URL Generation** — Get search URLs for browser/web_fetch usage
+- **📚 Advanced Operators** — site:, filetype:, intitle:, time filters, privacy search
 
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8+
-- pip / poetry
-
-### Installation
+## Quick Start
 
 ```bash
 git clone https://github.com/openbot-coder/web-search-skills.git
@@ -28,68 +23,112 @@ cd web-search-skills
 pip install -r requirements.txt
 ```
 
-### Quick Start
+### Python API
 
 ```python
 import asyncio
-from src.web_search import search_web
+from scripts.unified_search import UnifiedSearch
 
-results = asyncio.run(search_web("latest AI developments"))
-for result in results:
-    print(f"- {result.title}: {result.url}")
+async def main():
+    async with UnifiedSearch() as searcher:
+        # Search all sources
+        results = await searcher.search("AI 大模型")
+        for r in results:
+            print(f"[{r.source}] {r.title}")
+
+        # Search by category
+        news = await searcher.search_news("A股")
+        papers = await searcher.search_academic("transformer")
+        wechat = await searcher.search_wechat("Python教程")
+
+        # Get search URLs (for browser / web_fetch)
+        urls = await searcher.get_search_urls("machine learning")
+        print(urls["Google"])
+
+asyncio.run(main())
+```
+
+### URL-Based Search
+
+```javascript
+web_fetch({"url": "https://www.google.com/search?q=AI+news"})
+web_fetch({"url": "https://duckduckgo.com/html/?q=privacy+tools"})
+web_fetch({"url": "https://www.baidu.com/s?wd=人工智能"})
 ```
 
 ## Project Structure
 
 ```
 web-search-skills/
-├── README.md              # Project documentation
-├── LICENSE                # MIT License
-├── skill.md               # CodeBuddy Agent Skill definition
-├── requirements.txt       # Python dependencies
-├── src/                   # Source code
-│   └── web_search.py      # Core search implementation
-└── examples/              # Usage examples
-    └── basic_search.py
+├── SKILL.md                       # CodeBuddy Agent Skill definition
+├── README.md                      # This file
+├── LICENSE                        # MIT License
+├── requirements.txt               # Python dependencies
+├── config/
+│   └── engines.json               # All engine/source definitions
+├── scripts/
+│   ├── __init__.py
+│   ├── unified_search.py          # Unified search entry point
+│   ├── core/
+│   │   ├── base.py                # Abstract base + SearchResult
+│   │   └── config_loader.py       # Engine config loader
+│   ├── engines/
+│   │   ├── url_engine.py          # Generic URL-based engine
+│   │   └── parser_engines.py      # DuckDuckGo result parser
+│   ├── news/
+│   │   ├── cls.py                 # 财联社
+│   │   └── wallstreetcn.py        # 华尔街见闻
+│   ├── academic/
+│   │   └── arxiv.py               # ArXiv
+│   └── wechat/
+│       └── sogou_weixin.py        # 搜狗微信
+├── references/
+│   └── search-operators.md        # Advanced search operators guide
+└── examples/
+    └── multi_source_search.py     # Usage examples
 ```
 
-## Usage
+## Available Sources
 
-### As a CodeBuddy Agent Skill
+| Category | Sources | Count |
+|----------|---------|:-----:|
+| **Web Engines** | Baidu, Google, DuckDuckGo, Bing CN/INT, 360, Sogou, Yahoo, Startpage, Brave, Ecosia, Qwant, Shenma | 14 |
+| **News** | 财联社, 华尔街见闻 | 2 |
+| **Academic** | ArXiv | 1 |
+| **WeChat** | 搜狗微信 | 1 |
+| **Special** | WolframAlpha | 1 |
+| **Total** | | **19** |
 
-This project is designed as a CodeBuddy Agent Skill. To install:
+## API Reference
 
-1. Copy `skill.md` to your CodeBuddy skills directory
-2. Configure your search engine API keys
-3. The skill is now available to your AI agent
-
-### API Reference
+### UnifiedSearch
 
 ```python
-# Core class
-searcher = WebSearch(config=None)
-results = await searcher.search(query, engine="duckduckgo", max_results=10)
-content = await searcher.extract_content(url)
-
-# Convenience function
-results = await search_web(query, engine="duckduckgo", max_results=10)
+class UnifiedSearch:
+    async def search(query, sources=["all"], max_results=10, force_refresh=False) -> list[SearchResult]
+    async def search_engines(query, region=None, max_results=10) -> list[SearchResult]
+    async def search_news(query, max_results=10) -> list[SearchResult]
+    async def search_academic(query, max_results=10, field="all") -> list[SearchResult]
+    async def search_wechat(query, max_results=10) -> list[SearchResult]
+    async def get_search_urls(query, sources=None) -> dict[str, str]
 ```
+
+### SearchResult
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | str | Result title |
+| `url` | str | Result URL |
+| `snippet` | str | Summary/description |
+| `source` | str | Engine/source name |
+| `rank` | int | Rank position |
+| `category` | str | web, news, academic, wechat |
+| `extra` | dict | Additional metadata |
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+Contributions welcome! Add new engines to `config/engines.json`, create new source modules in `scripts/`, and submit a PR.
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built for the CodeBuddy ecosystem
-- Inspired by the need for better web search capabilities in AI agents
+MIT License — see [LICENSE](LICENSE).

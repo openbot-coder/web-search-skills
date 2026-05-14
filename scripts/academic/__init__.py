@@ -1,0 +1,1 @@
+"""Academic paper search implementations."""
