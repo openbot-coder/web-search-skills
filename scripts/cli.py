@@ -121,6 +121,40 @@ def _get_config_loader():
 # Result formatting
 # ---------------------------------------------------------------------------
 
+def _sanitize_for_console(text: str) -> str:
+    """Remove or replace characters that can't be encoded in Windows GBK console."""
+    _REPLACE = {
+        "\u2022": "*",      # bullet
+        "\u2023": ">",      # triangular bullet
+        "\u25B6": ">",      # black right-pointing triangle
+        "\u25C0": "<",      # black left-pointing triangle
+        "\u2713": "v",      # check mark
+        "\u2714": "v",      # heavy check mark
+        "\u2192": "->",     # rightwards arrow
+        "\u2190": "<-",     # leftwards arrow
+        "\u2014": "--",     # em dash
+        "\u2013": "-",      # en dash
+        "\u2018": "'",      # left single quote
+        "\u2019": "'",      # right single quote
+        "\u201c": '"',      # left double quote
+        "\u201d": '"',      # right double quote
+        "\u2026": "...",    # ellipsis
+        "\u00a0": " ",      # non-breaking space
+    }
+    for old, new in _REPLACE.items():
+        text = text.replace(old, new)
+    # Remove any remaining non-BMP characters or chars outside printable ASCII range
+    # that GBK cannot encode
+    result = []
+    for ch in text:
+        try:
+            ch.encode("gbk")
+            result.append(ch)
+        except UnicodeEncodeError:
+            result.append("?")
+    return "".join(result)
+
+
 def _format_result(r, fmt: str = "text") -> str:
     """Format a single SearchResult."""
     if fmt == "json":
@@ -134,10 +168,10 @@ def _format_result(r, fmt: str = "text") -> str:
             "extra": dict(r.extra) if r.extra else {},
         }, ensure_ascii=False, indent=2)
 
-    lines = [f"[{r.rank}] {r.title}"]
+    lines = [_sanitize_for_console(r.title)]
     lines.append(f"    URL: {r.url}")
     if r.snippet:
-        lines.append(f"    {r.snippet[:200]}")
+        lines.append(f"    {_sanitize_for_console(r.snippet[:200])}")
     if r.extra:
         extra_parts = []
         for k, v in r.extra.items():
@@ -150,7 +184,7 @@ def _format_result(r, fmt: str = "text") -> str:
             elif v and k not in ("parsed_date", "note", "feed_url"):
                 extra_parts.append(f"{k}: {v}")
         if extra_parts:
-            lines.append(f"    ({'; '.join(extra_parts)})")
+            lines.append(f"    ({_sanitize_for_console('; '.join(extra_parts))})")
     return "\n".join(lines)
 
 
