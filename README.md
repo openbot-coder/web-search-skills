@@ -5,8 +5,11 @@ Multi-source web search CLI tool — search across **28 engines** from your term
 ## Quick Start
 
 ```bash
-# Install with uv (recommended)
+# Option 1: pip install (recommended for CodeBuddy Agent use)
 cd web-search-skills
+pip install -e .
+
+# Option 2: uv tool install (alternative)
 uv tool install -e .
 
 # Now use globally from anywhere
@@ -19,6 +22,8 @@ Or run directly without install:
 ```bash
 python ws.py wechat 蒙面财经
 ```
+
+> Requires Python 3.8+. After `pip install -e .`, the `web-search` command is available globally.
 
 ## Usage
 
@@ -46,7 +51,7 @@ web-search <command> <query> [options]
 |-------------------|----------------------------------------------|
 | `-n N`            | Max results per source (default: 10)         |
 | `-j`              | JSON output                                  |
-| `-o FILE`         | Save to JSON file                            |
+| `-o FILE`         | Save to JSON file (path restricted to current directory) |
 | `-s NAME [...]`   | Specific source(s) — engine names or categories (e.g. `-s "Hacker News" V2EX`, `-s web news`) |
 | `-r cn/global`    | Region filter (web search)                   |
 | `--site SITE`     | Restrict to site (baidu command only)        |

@@ -158,6 +158,9 @@ web-search health
 
 ## Python API (for programmatic use)
 
+> **Tip:** For Agent use, prefer invoking the `web-search` CLI command directly (see examples above).
+> The API import below only works when running from the project root directory.
+
 ```python
 from scripts.unified_search import UnifiedSearch
 
@@ -176,6 +179,16 @@ async def main():
 ```
 
 ## Important Notes
+
+### Installation
+The `web-search` CLI must be installed first before use:
+```bash
+cd web-search-skills
+pip install -e .
+```
+This registers `web-search` as a global command. Requires Python 3.8+.
+
+### Known Limitations
 
 - **WeChat** via Sogou has anti-scraping limits, may return empty
 - **财联社 / 华尔街见闻** need JS rendering → returns search page URL, not parsed results
