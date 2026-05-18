@@ -415,7 +415,7 @@ async def _run_search(args):
 
     _print_results(results, fmt="json" if args.json else "text")
 
-    # Save to file if requested
+    # Save to file if requested (with basic path-sanitization)
     if args.output:
         output_data = json.dumps(
             [{
@@ -440,6 +440,12 @@ async def _run_search(args):
             indent=2,
         )
         output_path = os.path.abspath(args.output)
+        # Restrict output to the project root or current working directory
+        allowed_base = os.path.abspath(os.getcwd())
+        if not output_path.startswith(allowed_base):
+            print(f"错误: 输出路径超出允许范围 ({allowed_base})", file=sys.stderr)
+            sys.exit(1)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(output_data)
         print(f"\n结果已保存至: {output_path}")
